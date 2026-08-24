@@ -1,16 +1,43 @@
-# React + Vite
+# Legal Document Processing Pipeline
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An automated legal document processing pipeline for extracting, cleaning, structuring, chunking, embedding, and storing Pakistani legal judgments.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This project processes legal PDF documents through an automated pipeline and prepares them for downstream AI-powered legal research and retrieval systems.
 
-## React Compiler
+The pipeline performs:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. PDF document upload
+2. PDF text extraction
+3. Text cleaning and normalization
+4. Legal metadata extraction using Google Gemini
+5. Legal document chunking
+6. Chunk embedding generation
+7. Local SQLite storage
+8. Supabase document storage
+9. Supabase vector storage
+10. Duplicate document detection using SHA-256 file hashing
 
-## Expanding the ESLint configuration
+## Architecture
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```text
+PDF Upload
+    ↓
+File Hashing
+    ↓
+Duplicate Detection
+    ↓
+PDF Text Extraction
+    ↓
+Text Cleaning
+    ↓
+LLM Metadata Extraction
+    ↓
+Document Chunking
+    ↓
+Embedding Generation
+    ↓
+Local SQLite Storage
+    ↓
+Supabase PostgreSQL + pgvector
