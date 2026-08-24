@@ -1,0 +1,48 @@
+from database.supabase_client import supabase
+
+
+print("=" * 60)
+print("SUPABASE READ TEST")
+print("=" * 60)
+
+
+try:
+
+    response = (
+        supabase
+        .table("chunks")
+        .select(
+            "id, document_id, chunk_number, chunk_text"
+        )
+        .eq("document_id", 1)
+        .execute()
+    )
+
+    print("Chunks retrieved successfully.")
+
+    for chunk in response.data:
+
+        print("\n-----------------------------")
+
+        print("Chunk ID:", chunk["id"])
+
+        print(
+            "Document ID:",
+            chunk["document_id"]
+        )
+
+        print(
+            "Chunk Number:",
+            chunk["chunk_number"]
+        )
+
+        print(
+            "Text:",
+            chunk["chunk_text"]
+        )
+
+except Exception as e:
+
+    print("Read FAILED.")
+
+    print(str(e))

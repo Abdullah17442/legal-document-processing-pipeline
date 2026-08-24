@@ -1,0 +1,415 @@
+from utils.supabase_repository import (
+    save_supabase_document,
+    save_supabase_chunk,
+    get_supabase_document,
+    get_all_supabase_documents,
+    get_supabase_chunks,
+    delete_supabase_document,
+    delete_supabase_chunks,
+)
+
+
+# ============================================================
+# TEST DOCUMENT
+# ============================================================
+
+TEST_DOCUMENT = {
+    "filename": "TEST_SUPABASE_DOCUMENT.pdf",
+    "filepath": "uploads/TEST_SUPABASE_DOCUMENT.pdf",
+    "pages": 7,
+    "characters": 6760,
+    "extracted_text": (
+        "This is a test legal judgment stored in Supabase."
+    ),
+
+    "case_number": "TEST SAO No.150 of 2009",
+    "case_title": "Test Legal Case",
+    "judge_name": "TEST JUDGE",
+    "petitioner_name": "Test Petitioner",
+    "respondent_name": "Test Respondent",
+    "court": "Test Court",
+    "judgment_date": "16.10.2009",
+    "case_type": "SAO",
+
+    "facts": "Test facts.",
+    "issues": "Test issues.",
+    "evidence": "Test evidence.",
+    "reasoning": "Test reasoning.",
+    "decision": "Test decision."
+}
+
+
+# ============================================================
+# TEST EMBEDDING
+# ============================================================
+
+# Your actual Gemini embedding dimension is 3072.
+TEST_EMBEDDING = [0.001] * 3072
+
+
+# ============================================================
+# MAIN TEST
+# ============================================================
+
+def test_supabase_repository():
+
+    print("\n")
+    print("=" * 80)
+    print("SUPABASE REPOSITORY TEST")
+    print("=" * 80)
+
+
+    # ========================================================
+    # STEP 1
+    # SAVE DOCUMENT
+    # ========================================================
+
+    print("\n[1] Saving test document...")
+
+    document_id = save_supabase_document(
+
+        filename=TEST_DOCUMENT["filename"],
+        filepath=TEST_DOCUMENT["filepath"],
+        pages=TEST_DOCUMENT["pages"],
+        characters=TEST_DOCUMENT["characters"],
+        extracted_text=TEST_DOCUMENT["extracted_text"],
+
+        case_number=TEST_DOCUMENT["case_number"],
+        case_title=TEST_DOCUMENT["case_title"],
+        judge_name=TEST_DOCUMENT["judge_name"],
+        petitioner_name=TEST_DOCUMENT["petitioner_name"],
+        respondent_name=TEST_DOCUMENT["respondent_name"],
+        court=TEST_DOCUMENT["court"],
+        judgment_date=TEST_DOCUMENT["judgment_date"],
+        case_type=TEST_DOCUMENT["case_type"],
+
+        facts=TEST_DOCUMENT["facts"],
+        issues=TEST_DOCUMENT["issues"],
+        evidence=TEST_DOCUMENT["evidence"],
+        reasoning=TEST_DOCUMENT["reasoning"],
+        decision=TEST_DOCUMENT["decision"]
+    )
+
+    print(
+        f"Document inserted successfully."
+    )
+
+    print(
+        f"Supabase document ID: {document_id}"
+    )
+
+    assert document_id is not None
+
+
+    # ========================================================
+    # STEP 2
+    # GET DOCUMENT
+    # ========================================================
+
+    print("\n[2] Retrieving document...")
+
+    document = get_supabase_document(
+        document_id
+    )
+
+    print("Document retrieved successfully.")
+
+    print(
+        f"Filename: {document['filename']}"
+    )
+
+    assert document is not None
+
+    assert (
+        document["id"]
+        == document_id
+    )
+
+    assert (
+        document["filename"]
+        == TEST_DOCUMENT["filename"]
+    )
+
+    assert (
+        document["case_number"]
+        == TEST_DOCUMENT["case_number"]
+    )
+
+
+    # ========================================================
+    # STEP 3
+    # SAVE CHUNK + EMBEDDING
+    # ========================================================
+
+    print("\n[3] Saving test chunk + embedding...")
+
+    chunk_id = save_supabase_chunk(
+
+        document_id=document_id,
+
+        chunk_number=0,
+
+        chunk_text=(
+            "This is a test legal chunk "
+            "for Supabase vector storage."
+        ),
+
+        char_start=0,
+
+        char_end=70,
+
+        embedding=TEST_EMBEDDING
+    )
+
+    print(
+        f"Chunk inserted successfully."
+    )
+
+    print(
+        f"Supabase chunk ID: {chunk_id}"
+    )
+
+    assert chunk_id is not None
+
+
+    # ========================================================
+    # STEP 4
+    # GET CHUNKS
+    # ========================================================
+
+    print("\n[4] Retrieving document chunks...")
+
+    chunks = get_supabase_chunks(
+        document_id
+    )
+
+    print(
+        f"Retrieved {len(chunks)} chunk(s)."
+    )
+
+    assert len(chunks) >= 1
+
+
+    # ========================================================
+    # STEP 5
+    # VERIFY CHUNK
+    # ========================================================
+
+    print("\n[5] Verifying chunk...")
+
+    test_chunk = None
+
+    for chunk in chunks:
+
+        if chunk["id"] == chunk_id:
+
+            test_chunk = chunk
+
+            break
+
+    assert test_chunk is not None
+
+    print(
+        f"Chunk ID: {test_chunk['id']}"
+    )
+
+    print(
+        f"Chunk number: "
+        f"{test_chunk['chunk_number']}"
+    )
+
+    print(
+        f"Chunk text: "
+        f"{test_chunk['chunk_text']}"
+    )
+
+
+    assert (
+        test_chunk["document_id"]
+        == document_id
+    )
+
+    assert (
+        test_chunk["chunk_number"]
+        == 0
+    )
+
+    assert (
+        test_chunk["char_start"]
+        == 0
+    )
+
+    assert (
+        test_chunk["char_end"]
+        == 70
+    )
+
+
+    # ========================================================
+    # STEP 6
+    # VERIFY EMBEDDING
+    # ========================================================
+
+    print("\n[6] Verifying embedding...")
+
+    embedding = test_chunk["embedding"]
+
+    print(
+        f"Embedding dimension: "
+        f"{len(embedding)}"
+    )
+
+    assert embedding is not None
+
+    assert len(embedding) == 3072
+
+    print(
+        "Embedding verification passed."
+    )
+
+
+    # ========================================================
+    # STEP 7
+    # GET ALL DOCUMENTS
+    # ========================================================
+
+    print("\n[7] Testing get_all_supabase_documents()...")
+
+    documents = get_all_supabase_documents()
+
+    print(
+        f"Total documents returned: "
+        f"{len(documents)}"
+    )
+
+    assert isinstance(
+        documents,
+        list
+    )
+
+    found = any(
+        document["id"] == document_id
+        for document in documents
+    )
+
+    assert found
+
+    print(
+        "get_all_supabase_documents() passed."
+    )
+
+
+    # ========================================================
+    # STEP 8
+    # DELETE TEST CHUNKS
+    # ========================================================
+
+    print("\n[8] Deleting test chunks...")
+
+    deleted_chunks = delete_supabase_chunks(
+        document_id
+    )
+
+    print(
+        f"Deleted chunk rows: "
+        f"{len(deleted_chunks)}"
+    )
+
+
+    # ========================================================
+    # STEP 9
+    # VERIFY CHUNKS DELETED
+    # ========================================================
+
+    print("\n[9] Verifying chunk deletion...")
+
+    remaining_chunks = get_supabase_chunks(
+        document_id
+    )
+
+    assert len(remaining_chunks) == 0
+
+    print(
+        "Chunk deletion verified."
+    )
+
+
+    # ========================================================
+    # STEP 10
+    # DELETE TEST DOCUMENT
+    # ========================================================
+
+    print("\n[10] Deleting test document...")
+
+    deleted = delete_supabase_document(
+        document_id
+    )
+
+    assert deleted is True
+
+    print(
+        "Document deleted successfully."
+    )
+
+
+    # ========================================================
+    # STEP 11
+    # VERIFY DOCUMENT DELETED
+    # ========================================================
+
+    print("\n[11] Verifying document deletion...")
+
+    deleted_document = get_supabase_document(
+        document_id
+    )
+
+    assert deleted_document is None
+
+    print(
+        "Document deletion verified."
+    )
+
+
+    # ========================================================
+    # FINAL RESULT
+    # ========================================================
+
+    print("\n")
+    print("=" * 80)
+    print("ALL SUPABASE REPOSITORY TESTS PASSED")
+    print("=" * 80)
+
+    print(
+        f"Document tested : {document_id}"
+    )
+
+    print(
+        f"Chunk tested    : {chunk_id}"
+    )
+
+    print(
+        "Document CRUD   : PASS"
+    )
+
+    print(
+        "Chunk CRUD      : PASS"
+    )
+
+    print(
+        "Embedding       : PASS (3072 dimensions)"
+    )
+
+    print(
+        "Cleanup         : PASS"
+    )
+
+    print("=" * 80)
+
+
+# ============================================================
+# RUN TEST
+# ============================================================
+
+if __name__ == "__main__":
+
+    test_supabase_repository()

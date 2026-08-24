@@ -1,0 +1,221 @@
+import re
+from typing import Dict, List, Optional
+
+
+def clean_value(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    value = re.sub(r"\s+", " ", value)
+    value = value.strip(" :-\n\t")
+    return value if value else None
+
+
+def _normalize_for_matching(text: str) -> str:
+    """
+    Collapses all whitespace runs (including newlines from PDF line
+    wraps) into single spaces, so multi-word literal patterns don't break
+    just because a header wrapped across lines. Use this for single-line
+    pattern matching only — extract_important_parts still needs real
+    paragraph breaks, so it uses the original text.
+    """
+    return re.sub(r"\s+", " ", text)
+
+
+def extract_case_number(text: str) -> Optional[str]:
+    """
+    Extract case/reference number. Covers the common Pakistani citation
+    formats — civil, criminal, constitutional, and tax.
+    """
+    norm = _normalize_for_matching(text)
+    patterns = [
+        r"\bC\.?R\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",           # Civil Revision
+        r"\bW\.?P\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",            # Writ Petition
+        r"\bC\.?P\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",            # Civil Petition
+        r"\bR\.?F\.?A\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",        # Regular First Appeal
+        r"\bR\.?S\.?A\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",        # Regular Second Appeal
+        r"\bF\.?A\.?O\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",        # First Appeal from Order
+        r"\bI\.?C\.?A\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",        # Intra Court Appeal
+        r"\bCrl\.?\s*A(?:ppeal)?\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",  # Criminal Appeal
+        r"\bCrl\.?\s*Misc\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",    # Criminal Misc
+        r"\bS\.?T\.?R\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",        # Sales Tax Reference
+        r"\bP\.?T\.?R\.?\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",        # Tax Reference
+        r"\b(?:Civil\s+)?Suit\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",
+        r"\bCivil\s+Revision\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",
+        r"\bAppeal\s*(?:No\.?\s*)?\d+\s*/\s*\d+\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, norm, re.IGNORECASE)
+        if match:
+            return clean_value(match.group(0))
+    return None
+
+
+def extract_judge(text: str) -> Optional[str]:
+    norm = _normalize_for_matching(text)
+    patterns = [
+        r"\(([^()\n]+)\)\s*JUDGE\b",
+        r"\b(?:MR\.|MS\.|MRS\.)?\s*JUSTICE\s+([A-Z][A-Z .'-]+)",
+        r"\bBEFORE\s*:\s*(?:MR\.|MS\.|MRS\.)?\s*JUSTICE\s+([A-Z][A-Z .'-]+)",
+        r"\bCORAM\s*:\s*(?:MR\.|MS\.|MRS\.)?\s*JUSTICE\s+([A-Z][A-Z .'-]+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, norm, re.IGNORECASE)
+        if match:
+            judge = clean_value(match.group(1))
+            if judge:
+                return judge
+    return None
+
+
+def extract_petitioner(text: str) -> Optional[str]:
+    """
+    Covers petitioner/appellant/plaintiff roles across case types.
+    """
+    patterns = [
+        r"(?im)^\s*([A-Z][A-Za-z .'-]{2,100})\s+(?:VERSUS|VS\.?|V\.)",
+        r"(?im)^\s*([A-Z][A-Za-z .'-]{2,100})\s+(?:PETITIONER|APPELLANT|PLAINTIFF)S?\b",
+        r"(?im)(?:PETITIONER|APPELLANT|PLAINTIFF)S?\s*[:\-]\s*(.+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            value = clean_value(match.group(1))
+            if value:
+                return value
+    return None
+
+
+def extract_respondent(text: str) -> Optional[str]:
+    patterns = [
+        r"(?im)\b(?:VERSUS|VS\.?|V\.)\s*([A-Z][A-Za-z .'-]{2,150})",
+        r"(?im)(?:RESPONDENT|DEFENDANT)S?\s*[:\-]\s*(.+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            value = clean_value(match.group(1))
+            if value:
+                return value
+    return None
+
+
+def extract_court(text: str) -> Optional[str]:
+    norm = _normalize_for_matching(text)
+    court_patterns = [
+        r"SUPREME COURT OF PAKISTAN",
+        r"LAHORE HIGH COURT",
+        r"HIGH COURT OF SINDH",
+        r"SINDH HIGH COURT",
+        r"PESHAWAR HIGH COURT",
+        r"ISLAMABAD HIGH COURT",
+        r"FEDERAL SHARIAT COURT",
+        r"BALOCHISTAN HIGH COURT",
+    ]
+    for pattern in court_patterns:
+        match = re.search(pattern, norm, re.IGNORECASE)
+        if match:
+            return clean_value(match.group(0))
+    return None
+
+
+def extract_judgment_date(text: str) -> Optional[str]:
+    norm = _normalize_for_matching(text)
+    patterns = [
+        r"\b\d{1,2}[./-]\d{1,2}[./-]\d{4}\b",
+        r"\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, norm, re.IGNORECASE)
+        if match:
+            return clean_value(match.group(0))
+    return None
+
+
+def extract_case_type(text: str) -> str:
+    norm = _normalize_for_matching(text).lower()
+    case_types = {
+        "Murder": ["murder", "qatl-e-amd", "302 ppc"],
+        "Theft": ["theft", "stolen property", "section 379"],
+        "Robbery": ["robbery", "section 392"],
+        "Fraud": ["fraud", "cheating", "section 420"],
+        "Property Dispute": ["property dispute", "inheritance", "legal heir", "mutation", "land", "property"],
+        "Family Law": ["divorce", "khula", "maintenance", "custody", "nikahnama", "marriage"],
+        "Constitutional": ["constitution", "fundamental rights", "writ petition"],
+        "Civil": ["civil suit", "civil revision", "declaration", "injunction", "regular first appeal", "second appeal"],
+    }
+    scores = {}
+    for case_type, keywords in case_types.items():
+        score = sum(1 for kw in keywords if kw in norm)
+        if score > 0:
+            scores[case_type] = score
+    return max(scores, key=scores.get) if scores else "Unknown"
+
+
+def extract_important_parts(text: str) -> Dict[str, str]:
+    """
+    Rule-based extraction, kept intentionally broad. If a document uses
+    none of these markers (common in short/terse orders), every field
+    stays empty by design — see extract_legal_metadata's fallback below.
+    """
+    result = {"facts": "", "issues": "", "evidence": "", "reasoning": "", "decision": ""}
+    paragraphs = re.split(r"\n\s*\n", text)
+
+    for paragraph in paragraphs:
+        paragraph_clean = clean_value(paragraph)
+        if not paragraph_clean:
+            continue
+        lower = paragraph_clean.lower()
+
+        if any(p in lower for p in ["brief facts", "facts of the case", "brief summary", "facts leading"]):
+            result["facts"] += paragraph_clean + "\n"
+
+        if any(p in lower for p in ["issue no.", "issues", "the controversy", "point for determination"]):
+            result["issues"] += paragraph_clean + "\n"
+
+        if any(p in lower for p in ["evidence", "witness", "documentary evidence", "nikahnama", "affidavit"]):
+            result["evidence"] += paragraph_clean + "\n"
+
+        if any(p in lower for p in [
+            "on the basis", "therefore", "conclusion", "failed to prove", "held that",
+            "i have heard", "learned counsel", "after hearing", "in view of the above",
+            "in view of above", "consequently", "resultantly",
+        ]):
+            result["reasoning"] += paragraph_clean + "\n"
+
+        if any(p in lower for p in [
+            "petition is dismissed", "petition dismissed", "petition is allowed",
+            "appeal is dismissed", "appeal is allowed", "accordingly dismissed",
+            "accordingly allowed", "disposed of", "set aside", "order is maintained",
+        ]):
+            result["decision"] += paragraph_clean + "\n"
+
+    for key in result:
+        result[key] = result[key].strip()
+
+    return result
+
+
+def extract_legal_metadata(text: str) -> Dict:
+    important_parts = extract_important_parts(text)
+
+    # Fallback: if the rule-based section extraction found nothing at all,
+    # don't silently return five empty strings — keep the raw text
+    # available so the UI/agent isn't left with zero context. This is a
+    # known limitation of keyword-based extraction on terse orders; the
+    # roadmap's Phase 2 entity-extraction step (an LLM pass with a JSON
+    # schema) is the real fix for this.
+    if not any(important_parts.values()):
+        important_parts["_note"] = "No structured sections matched — document may be a short order without labeled headings."
+
+    metadata = {
+        "case_number": extract_case_number(text),
+        "judge_name": extract_judge(text),
+        "petitioner_name": extract_petitioner(text),
+        "respondent_name": extract_respondent(text),
+        "court": extract_court(text),
+        "judgment_date": extract_judgment_date(text),
+        "case_type": extract_case_type(text),
+        "important_parts": important_parts,
+    }
+
+    return metadata

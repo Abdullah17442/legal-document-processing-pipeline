@@ -1,0 +1,50 @@
+from database.supabase_client import supabase
+
+
+print("=" * 60)
+print("SUPABASE DOCUMENT INSERT TEST")
+print("=" * 60)
+
+
+test_document = {
+    "filename": "supabase_test.pdf",
+    "filepath": "uploads/supabase_test.pdf",
+    "pages": 10,
+    "characters": 5000,
+    "extracted_text": "This is a Supabase database test.",
+
+    "case_number": "TEST No.1 of 2026",
+    "case_title": "Test Case v. Test Respondent",
+    "judge_name": "Test Judge",
+    "petitioner_name": "Test Petitioner",
+    "respondent_name": "Test Respondent",
+    "court": "Test Court",
+    "judgment_date": "13.08.2026",
+    "case_type": "Civil Appeal",
+
+    "facts": "Test facts.",
+    "issues": "Test issues.",
+    "evidence": "Test evidence.",
+    "reasoning": "Test reasoning.",
+    "decision": "Test decision."
+}
+
+
+try:
+
+    response = (
+        supabase
+        .table("documents")
+        .insert(test_document)
+        .execute()
+    )
+
+    print("Document inserted successfully.")
+
+    print("\nInserted document:")
+    print(response.data)
+
+except Exception as e:
+
+    print("Document insertion FAILED.")
+    print(str(e))
